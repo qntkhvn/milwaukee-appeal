@@ -1,0 +1,355 @@
+---
+title: "Consulting Project - Data Exploration"
+author: "Adam, Anthony, Quang"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, 
+                      warning = FALSE,
+                      comment = "",
+                      fig.height = 4,
+                      fig.width = 6,
+                      fig.align = "center")
+```
+
+## Recap
+
+### Data Wrangling
+
+*   We joined to join the main housing data with the location data.
+
+    *   We obtain the latitude and longitude for each property, using the address and zip code provided by the location data (using the `tidygeocoder` package)
+
+
+*   We are looking into demographic data for each neighborhood/zip code.
+
+### EDA
+
+*   Missing data: Sale price, sale date, half bath rating, half bath count are the columns with lots of missing data (over 75% missing). The only variable we think is worth keeping is sale price, which we're going to impute (possibly with a linear imputation with land area).
+
+*   We explored trends in the data related to property appeal
+
+    *   Target variable: For each property, we created a new column `appealed`, which is an indicator for the event "at least one of {`appealed19`, `appealed20`, `appealed21`} is true." (i.e. there's at least one appeal from 2019 to 2021).
+
+    *   Categorical plots: Percent appealed vs categorical variables (neighborhood, zip code, building type,...)
+    
+    (see the figures in the next section)
+
+### Next plans
+
+*   Build a classifier to predict whether appealed/not appealed
+
+*   Possible methods:
+
+    *   Logistic regression
+    
+    *   Random forest
+    
+    *   Boosting: xgboost, catboost
+    
+*   We could try all of these techniques and compare their prediction accuracy.
+
+*   Obtain variable importance plot to see which predictors are helpful in predicting property appeal.
+
+---
+
+## Code and Figures
+
+### Packages and Data
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(scales)
+theme_set(theme_light()) 
+```
+
+```{r}
+load("~/Desktop/consulting/project/consulting_data.RData") # "final"
+load("~/Desktop/consulting/project/location_data.RData") # "final_loc"
+load("~/Desktop/consulting/project/nbhd_map.RData") # "nbhd_map"
+```
+
+### Location: Obtaining latitude/longitude
+
+We took the location (`final_loc`) data and did some cleaning and created new variables (latitiude, longitude). Since this took awhile to run (hours), we saved the new data to a csv file, so that we don't have to re-run the code every single time.
+
+```{r, eval = FALSE}
+geo_cleaned <- final_loc %>%
+  
+  # this function is from the janitor package
+  # here it converts the column names from upper to lower case
+  clean_names() %>%
+  
+  # converts property id's to character
+  mutate(prop_id = as.character(prop_id)) %>%
+  
+  # only keeps ids that belong to the appeals data
+  filter(prop_id %in% as.character(final$PROP_ID)) %>% 
+  
+  # make sure all zip are filled in
+  fill(zip) %>%
+  
+  # use string methods to remove excess information (unecessary characters, etc.) from address
+  # also paste the address with city, state, and zip code 
+  mutate(address = str_remove(address, ",.*"),
+         address = str_remove(address, "--[:upper:]|-\\]"),
+         address = str_remove(address, ".*-"),
+         address = str_c(address, "Milwaukee", "WI", zip, sep = ", ")) %>%
+  
+  # performs geocoding to get the latitude/longitude for every observation
+  # we're using the ArcGIS API, which takes awhile to run
+  tidygeocoder::geocode(address, method = "arcgis")
+
+# write to a csv file after the process is complete
+# write_csv("geo_cleaned.csv")
+```
+
+Import the new data, from a DropBox link.
+
+```{r}
+geo_cleaned <- read_csv("https://www.dropbox.com/s/9jcsk1477qc4k60/geo_cleaned.csv?dl=1") %>% 
+  mutate(prop_id = as.character(prop_id)) # convert prop_id to a character, for joining purposes
+```
+
+### Main dataset
+
+Let's do some cleaning, then join with location data
+
+```{r}
+housing <- final %>% 
+  clean_names() %>% 
+  mutate(prop_id = as.character(prop_id), # convert to character
+         
+         # turns missing appeal value to yes/no
+         appealed19 = ifelse(is.na(appealed19), "no", "yes"), 
+         appealed20 = ifelse(is.na(appealed20), "no", "yes"),
+         appealed21 = ifelse(is.na(appealed21), "no", "yes"),
+         
+         # if at least one of appealed19, 20, 21 is yes, then yes.
+         appealed = ifelse(appealed19 == "yes" | appealed20 == "yes" | appealed21 == "yes", 
+                           "yes", "no"),
+         
+         # remove excess characters from these variables
+         bld_type = str_remove(bld_type, ".*- "),
+         nbhd = str_sub(nbhd, 1, 4),
+         qual = str_remove(qual, " -.*"),
+         cond = str_remove(cond, ".*- "),
+         kitchen_rating = str_remove(kitchen_rating, ".*- "),
+         full_bath_rating = str_remove(full_bath_rating, ".*- "),
+         half_bath_rating = str_remove(half_bath_rating, ".*- ")) %>% 
+  
+  # finally, join with the location data that I cleaned/created
+  left_join(geo_cleaned, by = "prop_id")
+```
+
+For now, let's not use the third dataset (`nbhd_map`). We can come back and use it to make maps later.
+
+### Missing Data
+
+```{r}
+# a great package for missing data visualization
+library(naniar)
+
+housing %>% 
+  gg_miss_var(show_pct = TRUE)
+```
+
+Sale price, sale date, half bath rating, half bath count are the columns with lots of missing data (over 75% missing)
+
+### Categorical variables
+
+**Neighborhood**: nbhc 4580 seem to have higher appeal rate than other.
+
+```{r}
+housing %>% 
+  
+  # get the count, number of appealed, and % appealed for each neighborhood
+  group_by(nbhd) %>%  
+  summarize(n = n(),
+            n_appealed = sum(appealed == "yes"),
+            pct_appealed = n_appealed / n) %>%
+  
+  # sort the % appealed by descending order
+  arrange(desc(pct_appealed)) %>%  
+  
+  # get the top 15 neighborhood
+  slice_head(n = 15) %>%  
+  
+  # reorder neighborhood, for plotting purposes
+  mutate(nbhd = fct_reorder(nbhd, pct_appealed)) %>%
+  
+  # initialize a plot
+  ggplot(aes(x = pct_appealed, y = nbhd)) +
+  
+  # add a bar graph (col stands for "column")
+  geom_col() +
+  
+  # relabel the x-axis to percent (from proportion)
+  scale_x_continuous(labels = percent) +
+  
+  # change x, y labels, add title
+  labs(x = "% appealed",
+       y = "Neighborhood Code",
+       title = "Top 15 neighborhoods with highest property appeal rate")
+```
+
+
+**Zip code**: 53217, followed by 53212, have higher appeal rate than other zip codes.
+
+```{r}
+housing %>% 
+  group_by(zip) %>% 
+  summarize(n = n(),
+            n_appealed = sum(appealed == "yes"),
+            pct_appealed = n_appealed / n) %>%
+  arrange(desc(pct_appealed)) %>% 
+  slice_head(n = 15) %>% 
+  mutate(zip = fct_reorder(as.character(zip), pct_appealed)) %>% 
+  ggplot(aes(x = pct_appealed, y = zip)) +
+  geom_col() +
+  scale_x_continuous(labels = percent) +
+  labs(x = "% appealed",
+       y = "Neighborhood Code",
+       title = "Top 15 zip codes with highest property appeal rate")
+```
+
+**HELPER FUNCTIONS**: We could play the same game with other categorical variables, but let's first write some helper functions, so that we don't have to copy the same code over and over again
+
+Function 1: **Summarize appeal rate by group**
+
+```{r}
+summarize_appealed <- function(tbl) {
+  tbl %>%
+    summarize(n = n(),
+              n_appealed = sum(appealed == "yes"),
+              pct_appealed = n_appealed / n) %>%
+    arrange(desc(n))
+}
+```
+
+Function 2: **Plotting a bar graph of appealed vs a categorical variable**
+
+```{r}
+# dplyr programming
+# https://dplyr.tidyverse.org/articles/programming.html
+# categorical plot
+# function takes in df and the name of categorical feature
+plot_appealed <- function(df, cat_feat, ...) {
+  if (!is.factor(pull(df, {{ cat_feat }}))) {
+    df <- df %>%
+      mutate({{ cat_feat }} := fct_reorder({{ cat_feat }}, pct_appealed))
+  }
+  
+  df %>%
+    filter(!is.na({{ cat_feat }})) %>% 
+    ggplot(aes(pct_appealed, {{ cat_feat }}, ...)) +
+    geom_col() +
+    scale_x_continuous(labels = percent) +
+    labs(x = "% appealed")
+}
+```
+
+**Building Type** (using the helper functions): Contemporary and mansion are the 2 building types with high appeal rate.
+
+```{r}
+housing %>% 
+  group_by(bld_type) %>% 
+  summarize_appealed() %>% 
+  plot_appealed(bld_type)
+```
+
+### Numerical variables
+
+```{r}
+housing %>% 
+  select(appealed, finished_area, land_sf, sale_price) %>% 
+  pivot_longer(!appealed) %>% 
+  ggplot(aes(value, fill = appealed)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ name, scales = "free", ncol = 1) +
+  scale_x_log10() +
+  labs(title = "Density for some numeric variables (on a log10 scale)")
+```
+
+### Map
+
+(This is just some exploratory work, mainly to get familiar with the packages and plotting)
+
+Let's try a map
+
+```{r, fig.width = 5}
+# aggregate data by latitude and longitude
+lat_long <- housing %>% 
+  group_by(lat = round(lat, 3),
+           long = round(long, 3)) %>%
+  summarize_appealed()
+
+lat_long %>% 
+  ggplot(aes(long, lat, color = pct_appealed)) + # color the points by % appealed
+  geom_point(alpha = 0.5) +
+  scale_color_gradient2(low = "darkblue",
+                        high = "darkred",
+                        midpoint = 0.25) +
+  labs(title = "A simple map, made with geom_point()")
+```
+
+Some places have higher appeal rate than other. Location (lat/long) could be helpful in predicting appealed outcome.
+
+\newpage
+
+Let's try `ggmap`
+
+```{r}
+library(ggmap)
+
+# map range
+map_range <- c(left = min(housing$long, na.rm = TRUE) - 0.01,
+               bottom = min(housing$lat, na.rm = TRUE) - 0.01,
+               right = max(housing$long, na.rm = TRUE) + 0.01,
+               top = max(housing$lat, na.rm = TRUE) + 0.01)
+
+milwaukee_map <- get_stamenmap(map_range, zoom = 12)
+```
+
+```{r}
+milwaukee_map %>% 
+  ggmap() +
+  labs(title = "Just a plain map of Milwaukee")
+```
+
+\newpage
+
+```{r}
+milwaukee_map %>% 
+  ggmap() +
+  geom_point(aes(long, lat, color = pct_appealed), 
+             alpha = 0.5,
+             data = lat_long) +
+  scale_color_gradient2(low = "darkblue",
+                        high = "darkred",
+                        midpoint = 0.25) +
+  labs(title = "Map of Milwaukee, with points added")
+```
+
+```{r}
+get_stamenmap(map_range,
+              zoom = 12,
+              maptype = "toner-background") %>% 
+  ggmap() +
+  geom_point(aes(long, lat, color = pct_appealed), 
+             alpha = 0.5,
+             data = lat_long) +
+  scale_color_gradient2(low = "darkblue",
+                        high = "darkred",
+                        midpoint = 0.25) +
+  labs(title = "Black and white version of the map")
+```
