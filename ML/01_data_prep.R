@@ -97,6 +97,6 @@ raw <- housing %>%
          full_bath_rating = ifelse(is.na(full_bath_rating), 0 , full_bath_rating),
          half_bath_rating = as.numeric(factor(half_bath_rating, levels = rev(rating_levels))),
          half_bath_rating = ifelse(is.na(half_bath_rating), 0 , half_bath_rating)) %>% 
-  select(-address, -geo_tract, -sale_date, -appealed21, -sale_year) %>%
+  select(-address, -geo_tract, -sale_date, -appealed21, -sale_year, -qual) %>%
   mutate(across(where(is.character), as.factor)) %>% 
   drop_na()
