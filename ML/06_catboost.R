@@ -9,7 +9,7 @@ train_pool <- catboost.load_pool(data = x_train, label = y_train)
 test_pool <- catboost.load_pool(data = x_test)
 
 fit <- catboost.train(learn_pool = train_pool,
-                      params = list(learning_rate = 0.02,
+                      params = list(learning_rate = 0.05,
                                     loss_function = "Logloss",
                                     eval_metric = "AUC"))
                                     
