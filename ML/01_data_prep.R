@@ -12,7 +12,44 @@ load(here(path, "location_data.RData"))
 
 geo_cleaned <- read_csv("https://www.dropbox.com/s/9jcsk1477qc4k60/geo_cleaned.csv?dl=1") %>% 
   mutate(prop_id = as.character(prop_id),
-         zip = as.character(zip))
+         zip = as.character(zip)) %>% 
+  select(-address, -geo_tract)
+
+# properties in the main dataset but are not in the location data
+# 207147 207148 212702 212704 222335 224675
+final$PROP_ID[!final$PROP_ID %in% final_loc$PROP_ID]
+
+# fill in missing info based on properties nearby
+
+# props close to 207147, 207148
+housing %>% 
+  select(prop_id, zip, lat, long) %>% 
+  filter(str_detect(prop_id, "^2071"))
+
+# props close to 212702, 212704
+housing %>% 
+  select(prop_id, zip, lat, long) %>% 
+  filter(str_detect(prop_id, "^21270"))
+  
+# props close to 222335
+housing %>% 
+  select(prop_id, zip, lat, long) %>% 
+  filter(str_detect(prop_id, "^22233"))
+
+# props close to 224675
+housing %>% 
+  select(prop_id, zip, lat, long) %>% 
+  filter(str_detect(prop_id, "^22467"))
+
+geo_miss <- tibble(
+  prop_id = c("207147", "207148", "212702", "212704", "222335", "224675"),
+  zip = c("53204", "53204", "53215", "53215", "53215", "53215"),
+  lat = c(43.024, 43.024, 43.0106, 43.0106, 42.997, 42.9978),
+  long = c(-87.91378, -87.91378, -87.948, -87.948, -87.94965, -87.9259)
+)
+
+geo_final <- geo_cleaned %>% 
+  bind_rows(geo_miss)
 
 
 # cleaning by column order
@@ -58,21 +95,20 @@ housing <- final %>%
     
     sale_status = ifelse(sale_year < 2020, "yes", "no"),
     
-    sale_price = ifelse(is.na(sale_price), 0, sale_price),
-    # sale_price_group = case_when(
-    #   sale_price <= 100000 ~ "<100k",
-    #   sale_price > 100000 & sale_price <= 150000 ~ "100-150k",
-    #   sale_price > 150000 & sale_price <= 200000 ~"150-200k",
-    #   sale_price > 200000 ~ ">200k",
-    #   is.na(sale_price) ~ "no_sale"),   # several sale price of 0
+    # sale_price = ifelse(is.na(sale_price), 0, sale_price),
+    sale_price = case_when(
+      sale_price <= 100000 ~ "<100k",
+      sale_price > 100000 & sale_price <= 150000 ~ "100-150k",
+      sale_price > 150000 & sale_price <= 200000 ~"150-200k",
+      sale_price > 200000 ~ ">200k",
+      is.na(sale_price) ~ "no_sale"),   # several sale price of 0
     
     appealed19 = ifelse(is.na(appealed19), "no", "appealed"), 
     appealed20 = ifelse(is.na(appealed20), "no", "appealed"),
     appealed21 = ifelse(is.na(appealed21), "no", "yes"),
     
   ) %>% 
-  left_join(geo_cleaned, by = "prop_id") # finally, joined with latitude/longitude data
-
+  left_join(geo_final, by = "prop_id") # finally, joined with latitude/longitude data
 
 
 # ordinal encoding
@@ -83,8 +119,6 @@ quality <- tibble(
            "C+", "C", "C-", "D+", "D", "D-", "E+", "E", "E-"),
   qual_score = c(2.75, 2.63, 2.5, 2.35, 2, 1.65, 1.34, 1.14, 1.075, 1.04, 
                  1.015, 0.985, 0.955, 0.925, 0.895, 0.65, 0.55, 0.45))
-
-
 
 raw <- housing %>% 
   left_join(quality) %>% 
@@ -97,6 +131,5 @@ raw <- housing %>%
          full_bath_rating = ifelse(is.na(full_bath_rating), 0 , full_bath_rating),
          half_bath_rating = as.numeric(factor(half_bath_rating, levels = rev(rating_levels))),
          half_bath_rating = ifelse(is.na(half_bath_rating), 0 , half_bath_rating)) %>% 
-  select(-address, -geo_tract, -sale_date, -appealed21, -sale_year, -qual) %>%
-  mutate(across(where(is.character), as.factor)) %>% 
-  drop_na()
+  select(-sale_date, -appealed21, -sale_year, -qual) %>%
+  mutate(across(where(is_character), as_factor))
