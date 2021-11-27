@@ -93,7 +93,7 @@ housing <- final %>%
     # sale_week = ifelse(is.na(sale_date), 0, week(sale_date)), # week number (1-52)
     # sale_year = ifelse(sale_year == 2021 & sale_month > 8, 2020, sale_year),
     
-    sale_status = ifelse(sale_year < 2020, "yes", "no"),
+    sale_status = ifelse(sale_year < 2020, 1, 0),
     
     # sale_price = ifelse(is.na(sale_price), 0, sale_price),
     sale_price = case_when(
@@ -103,7 +103,7 @@ housing <- final %>%
       sale_price > 200000 ~ ">200k",
       is.na(sale_price) ~ "no_sale"),   # several sale price of 0
     
-    appealed19 = ifelse(is.na(appealed19), "no", "appealed"), 
+    appealed19 = ifelse(is.na(appealed19), 0, 1), 
     appealed20 = ifelse(is.na(appealed20), "no", "appealed"),
     appealed21 = ifelse(is.na(appealed21), "no", "yes"),
     
@@ -124,7 +124,7 @@ raw <- housing %>%
   left_join(quality) %>% 
   mutate(qual_score = ifelse(is.na(qual_score), 0, qual_score), 
          cond = as.numeric(factor(cond, levels = rev(rating_levels))),
-         cond = ifelse(is.na(cond), 0 , cond),
+         cond = ifelse(is.na(cond), 0, cond),
          kitchen_rating = as.numeric(factor(kitchen_rating, levels = rev(rating_levels))),
          kitchen_rating = ifelse(is.na(kitchen_rating), 0 , kitchen_rating),
          full_bath_rating = as.numeric(factor(full_bath_rating, levels = rev(rating_levels))),
