@@ -130,6 +130,31 @@ raw <- housing %>%
          full_bath_rating = as.numeric(factor(full_bath_rating, levels = rev(rating_levels))),
          full_bath_rating = ifelse(is.na(full_bath_rating), 0 , full_bath_rating),
          half_bath_rating = as.numeric(factor(half_bath_rating, levels = rev(rating_levels))),
-         half_bath_rating = ifelse(is.na(half_bath_rating), 0 , half_bath_rating)) %>% 
+         half_bath_rating = ifelse(is.na(half_bath_rating), 0 , half_bath_rating),
+         finished_area = log1p(finished_area),
+         land_sf = log1p(land_sf)) %>% 
   select(-sale_date, -appealed21, -sale_year, -qual) %>%
   mutate(across(where(is_character), as_factor))
+
+
+# how many are still missing?
+# only 9
+raw %>% 
+  anti_join(drop_na(raw))
+
+# 2 with missing years
+# fill in with mode
+# new function shortcut
+get_mode <- \(v) unique(v)[which.max(tabulate(match(v, unique(v))))]
+mode_year <- get_mode(raw$year_built)
+
+
+# missing finished and land sf
+# fill in with mean
+avg_fa <- mean(raw$finished_area, na.rm = TRUE)
+avg_lsf <- mean(raw$land_sf, na.rm = TRUE)
+
+raw <- raw %>% 
+  mutate(year_built = ifelse(is.na(year_built), mode_year, year_built),
+         finished_area = ifelse(is.na(finished_area), avg_fa, finished_area),
+         land_sf = ifelse(is.na(land_sf), avg_lsf, land_sf))
