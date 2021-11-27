@@ -157,4 +157,5 @@ avg_lsf <- mean(raw$land_sf, na.rm = TRUE)
 raw <- raw %>% 
   mutate(year_built = ifelse(is.na(year_built), mode_year, year_built),
          finished_area = ifelse(is.na(finished_area), avg_fa, finished_area),
-         land_sf = ifelse(is.na(land_sf), avg_lsf, land_sf))
+         land_sf = ifelse(is.na(land_sf), avg_lsf, land_sf)) %>% 
+  select(-prop_id)
