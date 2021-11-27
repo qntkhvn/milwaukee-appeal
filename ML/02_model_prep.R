@@ -1,27 +1,15 @@
 library(tidymodels)
+tidymodels_prefer() 
 
-# 70-15-15 split
-# train-validation-test
-
-# holdout first
+# 70-30 train-test split
 set.seed(100)
-holdout_split <- initial_split(raw,
-                               prop = 0.85,
-                               strata = appealed20)
-holdout <- testing(holdout_split)
-train_raw <- training(holdout_split)
-
-# train and validation
-set.seed(101)
-split <- initial_split(train_raw,
-                       prop = 1 - nrow(holdout) / nrow(train_raw),
-                       strata = appealed20)
+split <- raw %>% 
+  initial_split(prop = 0.7, strata = appealed20)
 train <- training(split)
 test <- testing(split)
 
 # k-fold cross-validation
 # change v for the number of folds
-set.seed(102)
-fold <- vfold_cv(train, 
-                 v = 5,
-                 strata = appealed20)
+set.seed(101)
+folds <- train %>% 
+  vfold_cv(v = 3, strata = appealed20)
