@@ -13,3 +13,18 @@ test <- testing(split)
 set.seed(101)
 folds <- train %>% 
   vfold_cv(v = 3, strata = appealed20)
+
+# check on proportion of appeal status on both sets
+# should be approx the same
+
+raw %>% 
+  count(appealed20) %>% 
+  mutate(prop = n / sum(n))
+
+train %>% 
+  count(appealed20) %>% 
+  mutate(prop = n / sum(n))
+
+test %>% 
+  count(appealed20) %>% 
+  mutate(prop = n / sum(n))
