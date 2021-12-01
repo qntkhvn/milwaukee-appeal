@@ -133,8 +133,8 @@ raw <- housing %>%
          half_bath_rating = ifelse(is.na(half_bath_rating), 0 , half_bath_rating),
          finished_area = log1p(finished_area),
          land_sf = log1p(land_sf)) %>% 
-  select(-sale_date, -appealed21, -sale_year, -qual) %>%
-  mutate(across(where(is_character), as_factor))
+  select(-sale_date, -sale_price, -appealed21, -sale_year, -qual) %>%
+  mutate(across(where(is.character), factor))
 
 
 # how many are still missing?
@@ -157,5 +157,7 @@ avg_lsf <- mean(raw$land_sf, na.rm = TRUE)
 raw <- raw %>% 
   mutate(year_built = ifelse(is.na(year_built), mode_year, year_built),
          finished_area = ifelse(is.na(finished_area), avg_fa, finished_area),
-         land_sf = ifelse(is.na(land_sf), avg_lsf, land_sf)) %>% 
+         land_sf = ifelse(is.na(land_sf), avg_lsf, land_sf),
+         zip = fct_lump_min(zip, min = 1000),
+         bld_type = fct_lump_min(bld_type, min = 1000)) %>% 
   select(-prop_id)
