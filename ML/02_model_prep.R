@@ -1,5 +1,4 @@
 library(tidymodels)
-tidymodels_prefer() 
 
 # 70-30 train-test split
 set.seed(100)
@@ -12,7 +11,7 @@ test <- testing(split)
 # change v for the number of folds
 set.seed(101)
 folds <- train %>% 
-  vfold_cv(v = 3, strata = appealed20)
+  vfold_cv(v = 5, strata = appealed20)
 
 # check on proportion of appeal status on both sets
 # should be approx the same
