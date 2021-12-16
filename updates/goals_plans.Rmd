@@ -1,0 +1,64 @@
+---
+title: "Goals/Plans"
+output: pdf_document
+---
+
+## 1. Predict whether there's a property appeal
+
+*   PREDICTION PROBLEM
+
+*   CLASSIFICATION (Binary categorical response: appealed or not)
+
+*   Possible methods: 
+
+    *   Logistic regression
+  
+    *   Random forest
+  
+    *   `xgboost`
+  
+    *   `catboost`
+  
+    *   Ensemble
+    
+*   Cross validation
+
+*   Model tuning
+
+*   Model evaluation; possible metrics:
+
+    *   Log loss
+    
+    *   AUC/ROC
+    
+    *   Accuracy
+  
+*   We could build models using each of the algorithms and compare their prediction accuracy.
+
+*   Variable importance: could be extracted from model fits
+
+## 2. Explore trends in the data related to property appeal
+
+*   Relationship between appealed and other variables
+
+    *   Categorical (bar graph, line graph)
+    
+        *   Write a helper function to summarize appeal rate by group (using `group_by()` and `summarize()`)
+        
+        *   Helper functions for plotting too?
+    
+    *   Quantitative
+    
+        *   Density of all numeric, comparing appealed and not
+        
+        *   Log transformation?
+        
+        *   Plots involving dates (time series?)
+
+*   Missing data imputation (just simple mean/median/knn impute?)
+
+*   Animation?
+    
+*   Map? (get lat/long, use zip code and neighborhood info)
+
+*   Shiny app?
