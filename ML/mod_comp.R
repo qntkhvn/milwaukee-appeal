@@ -18,13 +18,3 @@ xg_smote_last %>%
   roc_curve(appealed20, .pred_appealed) %>% 
   autoplot() +
   theme_bw()
-
-
-
-housing %>% 
-  mutate(prob_appealed = xg_pred$.pred_appealed) %>% 
-  ggplot(aes(long, lat, color = prob_appealed)) +
-  geom_point() +
-  scale_color_gradient2()
-
-write_csv(mutate(housing, prob_appealed = lasso_pred$.pred_appealed), "~/Desktop/consulting/map/housing2.csv")
