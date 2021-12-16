@@ -4,7 +4,7 @@ library(leaflet)
 library(DT)
 
 shinyServer(function(input, output) {
-  housing <- read_csv("~/Desktop/consulting/map/housing2.csv") %>%
+  housing <- read_csv("housing.csv") %>%
     filter(!is.na(lat)) %>%
     mutate(address = str_to_upper(address)) %>%
     select(
