@@ -359,7 +359,7 @@ xg_last %>%
   geom_path() +
   coord_fixed()
 
-# auc on test 0.7702196
+# auc on test 0.7706084
 xg_last %>% 
   collect_predictions() %>% 
   roc_auc(appealed20, .pred_appealed)
@@ -369,6 +369,14 @@ xg_fit_final <- xg_final %>%
 
 xg_pred <- xg_fit_final %>% 
   augment(raw)
+
+# for shiny app
+# write_csv(mutate(housing, prob_appealed = xg_pred$.pred_appealed), "pred.csv")
+
+# housing %>% 
+#   select(prop_id) %>% 
+#   mutate(prob_appealed = xg_pred$.pred_appealed) %>% 
+#   write_rds("appealed_pred.rds")
 ```
 
 # Model comp
@@ -387,9 +395,6 @@ xg_last %>%
   group_by(model) %>% 
   roc_curve(appealed20, .pred_appealed) %>% 
   autoplot()
-
-# lasso: 0.7505269
-# xg: 0.7634448
 ```
 
 # Feature importance
